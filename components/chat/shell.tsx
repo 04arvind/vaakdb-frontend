@@ -1,12 +1,14 @@
 "use client";
 
-import { Database, Menu } from "lucide-react";
+import { Database, Menu, PanelLeftOpen } from "lucide-react";
 import { usePathname } from "next/navigation";
 import { type ReactNode, useEffect, useState } from "react";
 import { AppSidebar } from "@/components/chat/app-sidebar";
 
 export function Shell({ children }: { children: ReactNode }) {
   const [open, setOpen] = useState(false);
+  // Desktop only: the mobile drawer is driven by `open`.
+  const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
 
   // Close the mobile drawer after navigating.
@@ -27,16 +29,28 @@ export function Shell({ children }: { children: ReactNode }) {
 
   return (
     <div className="flex h-dvh overflow-hidden">
-      <AppSidebar open={open} onClose={() => setOpen(false)} />
+      <AppSidebar
+        open={open}
+        onClose={() => setOpen(false)}
+        collapsed={collapsed}
+        onCollapse={() => setCollapsed(true)}
+      />
       <div className="flex min-w-0 flex-1 flex-col">
-        <div className="flex h-12 shrink-0 items-center gap-2 border-b px-3 md:hidden">
+        <div
+          className={`flex h-12 shrink-0 items-center gap-2 border-b px-3 ${collapsed ? "" : "md:hidden"}`}
+        >
           <button
             type="button"
-            onClick={() => setOpen(true)}
+            onClick={() => {
+              setOpen(true);
+              setCollapsed(false);
+            }}
+            title="Open sidebar"
             className="rounded-md p-1.5 text-muted-foreground hover:bg-muted"
             aria-label="Open sidebar"
           >
-            <Menu className="size-5" />
+            <Menu className="size-5 md:hidden" />
+            <PanelLeftOpen className="hidden size-5 md:block" />
           </button>
           <Database className="size-4 text-primary" />
           <span className="font-semibold">VaakDB</span>

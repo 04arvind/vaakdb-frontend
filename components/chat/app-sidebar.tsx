@@ -4,6 +4,7 @@ import {
   Database,
   History,
   MessageSquare,
+  PanelLeftClose,
   Plug,
   Plus,
   X,
@@ -22,7 +23,17 @@ const NAV = [
   { href: "/history", label: "History", icon: History },
 ];
 
-export function AppSidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function AppSidebar({
+  open,
+  onClose,
+  collapsed,
+  onCollapse,
+}: {
+  open: boolean;
+  onClose: () => void;
+  collapsed: boolean;
+  onCollapse: () => void;
+}) {
   const pathname = usePathname();
 
   return (
@@ -39,6 +50,7 @@ export function AppSidebar({ open, onClose }: { open: boolean; onClose: () => vo
         className={cn(
           "fixed inset-y-0 left-0 z-40 flex w-72 flex-col border-r bg-sidebar transition-transform md:static md:z-auto md:w-64 md:translate-x-0",
           open ? "translate-x-0" : "-translate-x-full",
+          collapsed && "md:hidden",
         )}
       >
         <div className="flex h-14 items-center justify-between px-4">
@@ -50,6 +62,15 @@ export function AppSidebar({ open, onClose }: { open: boolean; onClose: () => vo
           </Link>
           <div className="flex items-center gap-1">
             <ThemeToggle />
+            <button
+              type="button"
+              onClick={onCollapse}
+              title="Close sidebar"
+              className="hidden rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground md:block"
+              aria-label="Close sidebar"
+            >
+              <PanelLeftClose className="size-4" />
+            </button>
             <button
               type="button"
               onClick={onClose}
