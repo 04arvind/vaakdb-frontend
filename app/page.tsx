@@ -1,9 +1,5 @@
-import Image from "next/image";
+import { redirect } from "next/navigation";
 
 export default function Home() {
- return (
-   <div className="flex flex-col items-center justify-center min-h-screen py-2 font-bold text-amber-300">
-    Hii! Erwin
-  </div>
- );
+  redirect("/chat");
 }
