@@ -1,3 +1,5 @@
+import type { CellValue, Row } from "@/lib/types";
+
 export function cn(...classes: (string | false | null | undefined)[]) {
   return classes.filter(Boolean).join(" ");
 }
@@ -36,4 +38,9 @@ export function toCsv(columns: string[], rows: unknown[][]) {
     return /[",\n]/.test(text) ? `"${text.replaceAll('"', '""')}"` : text;
   };
   return [columns, ...rows].map((row) => row.map(escape).join(",")).join("\n");
+}
+
+/** Backend rows are objects; tables render arrays in column order. */
+export function toRows(columns: string[], rows: Row[]): CellValue[][] {
+  return rows.map((row) => columns.map((c) => row[c] ?? null));
 }

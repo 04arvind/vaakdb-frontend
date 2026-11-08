@@ -9,10 +9,12 @@ export function MessageActions({
   message,
   onRetry,
   onFeedback,
+  canRegenerate = true,
 }: {
   message: ChatMessage;
   onRetry: () => void;
   onFeedback: (feedback: Feedback) => void;
+  canRegenerate?: boolean;
 }) {
   const [copied, setCopied] = useState(false);
 
@@ -44,11 +46,13 @@ export function MessageActions({
       >
         <ThumbsDown className="size-3.5" />
       </ActionButton>
-      <ActionButton label="Regenerate" onClick={onRetry}>
-        <RefreshCw className="size-3.5" />
-      </ActionButton>
-      {message.result?.durationMs !== undefined && (
-        <span className="ml-2 text-xs">{(message.result.durationMs / 1000).toFixed(1)}s</span>
+      {canRegenerate && (
+        <ActionButton label="Regenerate" onClick={onRetry}>
+          <RefreshCw className="size-3.5" />
+        </ActionButton>
+      )}
+      {message.durationMs !== undefined && (
+        <span className="ml-2 text-xs">{(message.durationMs / 1000).toFixed(1)}s</span>
       )}
     </div>
   );

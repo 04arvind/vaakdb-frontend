@@ -1,24 +1,20 @@
 "use client";
 
 import { Table2 } from "lucide-react";
-import { DatabaseSelector } from "@/components/vaakdb/database-selector";
 import { cn } from "@/lib/utils";
 
 export function ChatHeader({
   title,
   schemaOpen,
   onToggleSchema,
-  lockDatabase,
 }: {
   title: string;
   schemaOpen: boolean;
   onToggleSchema: () => void;
-  lockDatabase: boolean;
 }) {
   return (
     <header className="flex h-14 shrink-0 items-center gap-3 border-b px-4">
       <h1 className="min-w-0 flex-1 truncate text-sm font-medium">{title}</h1>
-      <DatabaseSelector disabled={lockDatabase} />
       <button
         type="button"
         onClick={onToggleSchema}

@@ -1,20 +1,18 @@
 "use client";
 
 import { LoaderCircle, RefreshCw, Search, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { SchemaTree } from "@/components/vaakdb/schema-tree";
 import type { SchemaTable } from "@/lib/types";
 import { cn } from "@/lib/utils";
-import { fetchSchema } from "@/lib/vaakdb-api";
+import { fetchColumns, fetchSchema } from "@/lib/vaakdb-api";
 
 export function SchemaSidebar({
   open,
-  connectionId,
   onClose,
   onInsert,
 }: {
   open: boolean;
-  connectionId: string | null;
   onClose: () => void;
   onInsert?: (text: string) => void;
 }) {
@@ -28,10 +26,10 @@ export function SchemaSidebar({
       return;
     }
     let cancelled = false;
-    fetchSchema(connectionId)
+    fetchSchema()
       .then((data) => {
         if (!cancelled) {
-          setTables(data.tables);
+          setTables(data);
           setError(null);
         }
       })
@@ -43,14 +41,27 @@ export function SchemaSidebar({
     return () => {
       cancelled = true;
     };
-  }, [open, connectionId, reloadKey]);
+  }, [open, reloadKey]);
+
+  const loadColumns = useCallback(async (name: string) => {
+    const table = tables?.find((t) => t.name === name);
+    if (!table || table.columns) {
+      return;
+    }
+    try {
+      const columns = await fetchColumns(table.schema, table.table);
+      setTables((prev) => prev?.map((t) => (t.name === name ? { ...t, columns } : t)) ?? prev);
+    } catch {
+      setTables((prev) => prev?.map((t) => (t.name === name ? { ...t, columns: [] } : t)) ?? prev);
+    }
+  }, [tables]);
 
   const query = filter.trim().toLowerCase();
   const filtered = tables?.filter(
     (t) =>
       !query ||
       t.name.toLowerCase().includes(query) ||
-      t.columns.some((c) => c.name.toLowerCase().includes(query)),
+      t.columns?.some((c) => c.name.toLowerCase().includes(query)),
   );
 
   return (
@@ -110,14 +121,16 @@ export function SchemaSidebar({
               <LoaderCircle className="size-4 animate-spin" /> Loading schema…
             </div>
           ) : filtered.length === 0 ? (
-            <p className="p-2 text-sm text-muted-foreground">No matching tables.</p>
+            <p className="p-2 text-sm text-muted-foreground">
+              {tables?.length ? "No matching tables." : "No tables yet. Store a file to create one."}
+            </p>
           ) : (
-            <SchemaTree tables={filtered} onInsert={onInsert} />
+            <SchemaTree tables={filtered} onExpand={loadColumns} onInsert={onInsert} />
           )}
         </div>
         {onInsert && (
           <p className="border-t px-4 py-2.5 text-xs text-muted-foreground">
-            Click a column to add it to your question.
+            Click a table or column to add it to your message.
           </p>
         )}
       </aside>
