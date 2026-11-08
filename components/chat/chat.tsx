@@ -10,8 +10,9 @@ import { Greeting } from "@/components/chat/greeting";
 import { Messages } from "@/components/chat/messages";
 import { SuggestedActions } from "@/components/chat/suggested-actions";
 import { SchemaSidebar } from "@/components/vaakdb/schema-sidebar";
-import { useActiveConnection, useHydrated } from "@/hooks/use-active-chat";
+import { useHydrated } from "@/hooks/use-active-chat";
 import { useVaakdbChat } from "@/hooks/use-vaakdb-chat";
+import type { Attachment } from "@/lib/types";
 
 /** Reads ?id= and remounts the chat when switching conversations. */
 export function ChatRoute() {
@@ -22,7 +23,6 @@ export function ChatRoute() {
 function Chat({ chatId }: { chatId: string | null }) {
   const router = useRouter();
   const hydrated = useHydrated();
-  const activeConnection = useActiveConnection();
   const [input, setInput] = useState("");
   const [schemaOpen, setSchemaOpen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -31,16 +31,14 @@ function Chat({ chatId }: { chatId: string | null }) {
     (id: string) => router.replace(`/chat?id=${id}`, { scroll: false }),
     [router],
   );
-  const { session, messages, isLoading, send, stop, retry, setFeedback } = useVaakdbChat(
-    chatId,
-    onCreate,
-  );
+  const { session, messages, isLoading, send, stop, retry, confirm, cancel, refreshOperation, setFeedback } =
+    useVaakdbChat(chatId, onCreate);
 
-  const submit = (text = input) => {
+  const submit = (text = input, attachment?: Attachment) => {
     if (!text.trim() || isLoading) {
       return;
     }
-    send(text);
+    send(text, attachment);
     setInput("");
   };
 
@@ -61,16 +59,14 @@ function Chat({ chatId }: { chatId: string | null }) {
   }
 
   const isEmpty = messages.length === 0;
-  const schemaConnection = session ? session.connectionId : (activeConnection?.id ?? null);
 
   return (
     <div className="flex min-h-0 flex-1">
       <div className="flex min-w-0 flex-1 flex-col">
         <ChatHeader
-          title={session?.title ?? "New chat"}
+          title={session?.title ?? ""}
           schemaOpen={schemaOpen}
           onToggleSchema={() => setSchemaOpen((v) => !v)}
-          lockDatabase={Boolean(session)}
         />
 
         {isEmpty ? (
@@ -81,31 +77,33 @@ function Chat({ chatId }: { chatId: string | null }) {
             </div>
           </div>
         ) : (
-          <Messages messages={messages} onRetry={retry} onFeedback={setFeedback} />
+          <Messages
+            messages={messages}
+            onRetry={retry}
+            onFeedback={setFeedback}
+            onConfirm={confirm}
+            onCancel={cancel}
+            onRefresh={refreshOperation}
+          />
         )}
 
         <div className="mx-auto w-full max-w-3xl px-4 pb-4">
           <ChatInput
             value={input}
             onChange={setInput}
-            onSubmit={() => submit()}
+            onSubmit={(attachment) => submit(input, attachment)}
             onStop={stop}
             isLoading={isLoading}
             textareaRef={textareaRef}
           />
           <p className="mt-2 flex items-center justify-center gap-1.5 text-center text-xs text-muted-foreground">
             <ShieldCheck className="size-3.5" />
-            Read-only queries, checked by guardrails. Verify important numbers.
+            Your private workspace. Changes are previewed first and only run after you confirm.
           </p>
         </div>
       </div>
 
-      <SchemaSidebar
-        open={schemaOpen}
-        connectionId={schemaConnection}
-        onClose={() => setSchemaOpen(false)}
-        onInsert={insert}
-      />
+      <SchemaSidebar open={schemaOpen} onClose={() => setSchemaOpen(false)} onInsert={insert} />
     </div>
   );
 }

@@ -3,23 +3,26 @@
 import {
   Database,
   History,
+  LogOut,
   MessageSquare,
   PanelLeftClose,
   Plug,
   Plus,
+  Server,
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Suspense } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
 import { SidebarHistory } from "@/components/chat/sidebar-history";
 import { ThemeToggle } from "@/components/chat/theme-toggle";
-import { useActiveConnection, useHydrated } from "@/hooks/use-active-chat";
+import { signOutAndForget, useAuth } from "@/lib/auth";
 import { cn } from "@/lib/utils";
+import { healthCheck } from "@/lib/vaakdb-api";
 
 const NAV = [
   { href: "/chat", label: "Chat", icon: MessageSquare },
-  { href: "/connections", label: "Connections", icon: Plug },
+  { href: "/connections", label: "My workspace", icon: Server },
   { href: "/history", label: "History", icon: History },
 ];
 
@@ -39,10 +42,7 @@ export function AppSidebar({
   return (
     <>
       <div
-        className={cn(
-          "fixed inset-0 z-30 bg-black/40 md:hidden",
-          open ? "block" : "hidden",
-        )}
+        className={cn("fixed inset-0 z-30 bg-black/40 md:hidden", open ? "block" : "hidden")}
         onClick={onClose}
         aria-hidden
       />
@@ -116,37 +116,55 @@ export function AppSidebar({
           </Suspense>
         </div>
 
-        <ConnectionBadge />
+        <UserBadge />
       </aside>
     </>
   );
 }
 
-function ConnectionBadge() {
-  const hydrated = useHydrated();
-  const connection = useActiveConnection();
+function UserBadge() {
+  const { user } = useAuth();
+  const router = useRouter();
+  const [online, setOnline] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    const check = () => healthCheck().then((ok) => !cancelled && setOnline(ok));
+    check();
+    const timer = setInterval(check, 30_000);
+    return () => {
+      cancelled = true;
+      clearInterval(timer);
+    };
+  }, []);
 
   return (
-    <Link
-      href="/connections"
-      className="m-3 flex items-center gap-2.5 rounded-lg border bg-card px-3 py-2.5 text-sm hover:bg-muted"
-    >
+    <div className="m-3 flex items-center gap-2.5 rounded-lg border bg-card px-3 py-2.5 text-sm">
       <span
         className={cn(
           "size-2 shrink-0 rounded-full",
-          connection ? "bg-success" : "bg-amber-500",
+          online === null ? "bg-muted-foreground" : online ? "bg-success" : "bg-destructive",
         )}
+        title={online === false ? "Backend unreachable" : "Backend connected"}
       />
       <span className="min-w-0 flex-1">
-        <span className="block truncate font-medium">
-          {hydrated && connection ? connection.name : "Demo database"}
-        </span>
+        <span className="block truncate font-medium">{user?.email ?? "Signed in"}</span>
         <span className="block truncate text-xs text-muted-foreground">
-          {hydrated && connection
-            ? `${connection.engine} · ${connection.database}`
-            : "Sample e-commerce data"}
+          {online === false ? "Backend unreachable" : "Personal workspace"}
         </span>
       </span>
-    </Link>
+      <button
+        type="button"
+        onClick={() => {
+          signOutAndForget();
+          router.replace("/login");
+        }}
+        className="rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+        aria-label="Sign out"
+        title="Sign out"
+      >
+        <LogOut className="size-4" />
+      </button>
+    </div>
   );
 }

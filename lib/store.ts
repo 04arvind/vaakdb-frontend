@@ -1,8 +1,9 @@
-import type { ChatSession, Connection } from "@/lib/types";
+import type { ChatSession, User } from "@/lib/types";
 
 /**
  * Tiny localStorage-backed stores consumed through useSyncExternalStore.
- * Chats and connections live in the browser until the backend exposes history APIs.
+ * Chats are cached in the browser per user; the backend keeps the authoritative
+ * query history (GET /queries) and the operations.
  */
 
 type Listener = () => void;
@@ -87,23 +88,36 @@ function createStore<T>(
 function markInterrupted(chats: ChatSession[]): ChatSession[] {
   return chats.map((chat) => ({
     ...chat,
-    messages: chat.messages.map((message) =>
-      message.role === "assistant" && message.stage !== "done" && !message.error
-        ? { ...message, error: "Interrupted — the page was reloaded before the answer arrived." }
-        : message,
-    ),
+    messages: chat.messages.map((message) => {
+      if (message.role === "assistant" && message.pending) {
+        return {
+          ...message,
+          pending: false,
+          error: { message: "Interrupted — the page was reloaded before the answer arrived." },
+        };
+      }
+      const op = message.operation?.status;
+      if (op === "confirming" || op === "cancelling") {
+        // The request may have finished on the server; the preview re-checks the status.
+        return { ...message, operation: { status: "pending" } };
+      }
+      return message;
+    }),
   }));
 }
 
+export interface AuthState {
+  token: string | null;
+  user: User | null;
+}
+
 const EMPTY_CHATS: ChatSession[] = [];
-const EMPTY_CONNECTIONS: Connection[] = [];
+const NO_AUTH: AuthState = { token: null, user: null };
 
 export const chatStore = createStore("vaakdb:chats", EMPTY_CHATS, markInterrupted);
-export const connectionStore = createStore("vaakdb:connections", EMPTY_CONNECTIONS);
-export const activeConnectionStore = createStore<string | null>(
-  "vaakdb:active-connection",
-  null,
-);
+export const authStore = createStore<AuthState>("vaakdb:auth", NO_AUTH);
+/** Id of the user the cached chats belong to (chats are cleared when another user signs in). */
+export const chatOwnerStore = createStore<number | null>("vaakdb:chats-owner", null);
 
 export function createId() {
   return typeof crypto !== "undefined" && "randomUUID" in crypto
